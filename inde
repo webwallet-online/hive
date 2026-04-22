@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>BLOCKMINE | Minimal Cyber Dashboard - Live Crypto Prices & News</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #05070a;
+            --card-bg: rgba(15, 20, 30, 0.8);
+            --cyan: #00f3ff;
+            --magenta: #ff00ff;
+            --text: #e0e0e0;
+            --dim-text: #8892b0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: var(--bg);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(0, 243, 255, 0.05) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(255, 0, 255, 0.05) 0px, transparent 50%);
+            color: var(--text);
+            font-family: 'JetBrains Mono', monospace;
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        /* --- Header Compacto --- */
+        .cyber-header {
+            max-width: 1100px;
+            margin: 0 auto 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(0, 243, 255, 0.2);
+            padding-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .cyber-header h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            color: var(--cyan);
+            text-transform: uppercase;
+        }
+
+        .nav-cyber { display: flex; gap: 15px; flex-wrap: wrap; }
+
+        .nav-cyber a {
+            text-decoration: none;
+            color: var(--dim-text);
+            font-size: 0.75rem;
+            transition: 0.3s;
+        }
+
+        .nav-cyber a:hover { color: var(--magenta); }
+
+        /* --- Grid Principal --- */
+        main {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+
+        .section-title {
+            font-size: 0.8rem;
+            color: var(--magenta);
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: rgba(255, 0, 255, 0.1);
+        }
+
+        /* --- Tarjetas Estilizadas --- */
+        .cyber-card {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            padding: 15px;
+            transition: border 0.3s;
+        }
+
+        .cyber-card:hover {
+            border-color: rgba(0, 243, 255, 0.3);
+        }
+
+        .prices-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+
+        .price-item h3 { 
+            font-size: 0.7rem; 
+            color: var(--dim-text); 
+            margin-bottom: 5px; 
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+        }
+        .price-val { font-size: 1rem; font-weight: bold; color: var(--cyan); }
+        .price-change { font-size: 0.65rem; margin-top: 4px; }
+
+        /* --- Calculadora Compacta --- */
+        .calc-compact {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .calc-compact input, .calc-compact select {
+            background: #000;
+            border: 1px solid #333;
+            color: var(--cyan);
+            padding: 8px;
+            font-size: 0.8rem;
+            border-radius: 2px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .calc-compact button {
+            background: var(--cyan);
+            border: none;
+            padding: 10px;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-family: 'JetBrains Mono', monospace;
+            transition: 0.2s;
+        }
+
+        .calc-compact button:hover {
+            background: var(--magenta);
+            color: #fff;
+        }
+
+        /* --- NOTICIAS EN TARJETAS (cards interactivas) --- */
+        .news-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .news-card {
+            background: rgba(10, 15, 25, 0.9);
+            border: 1px solid rgba(0, 243, 255, 0.15);
+            border-radius: 6px;
+            overflow: hidden;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .news-card:hover {
+            border-color: var(--cyan);
+            transform: translateX(4px);
+            background: rgba(15, 25, 35, 0.95);
+            box-shadow: 0 0 12px rgba(0, 243, 255, 0.2);
+        }
+
+        /* Imagen de la noticia (thumbnail) */
+        .news-image {
+            width: 100%;
+            height: 140px;
+            object-fit: cover;
+            background: linear-gradient(135deg, #0a0f1a, #1a1f2e);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+        }
+
+        .news-content {
+            padding: 12px 15px;
+        }
+
+        .news-title {
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: var(--cyan);
+            line-height: 1.4;
+            margin-bottom: 8px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .news-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.6rem;
+            color: var(--dim-text);
+        }
+
+        .news-source {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .news-time {
+            font-family: monospace;
+        }
+
+        .news-card a {
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .loading, .error {
+            text-align: center;
+            padding: 30px;
+            color: var(--dim-text);
+        }
+
+        .update-tag {
+            font-size: 0.6rem;
+            color: var(--dim-text);
+            margin-left: 10px;
+        }
+
+        .chip {
+            display: inline-block;
+            background: rgba(0, 243, 255, 0.1);
+            padding: 2px 6px;
+            border-radius: 2px;
+            font-size: 0.6rem;
+        }
+
+        @media (max-width: 750px) {
+            main { grid-template-columns: 1fr; }
+            .cyber-header { flex-direction: column; text-align: center; }
+            .news-image { height: 120px; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="cyber-header">
+        <h1>// BLOCKMINE.HUB</h1>
+        <nav class="nav-cyber">
+            <a href="#">DASHBOARD</a>
+            <a href="#">PRICES</a>
+            <a href="#">MINING</a>
+            <a href="#">HARDWARE</a>
+        </nav>
+    </header>
+
+    <main>
+        <!-- COLUMNA IZQUIERDA: PRECIOS + NOTICIAS (tarjetas) -->
+        <section>
+            <div class="section-title">
+                LIVE MARKET 
+                <span id="last-update" class="update-tag">syncing...</span>
+            </div>
+            <div class="prices-grid" id="prices-grid">
+                <div class="cyber-card price-item">
+                    <h3>Bitcoin (BTC)</h3>
+                    <div class="price-val">--</div>
+                    <div class="price-change">--</div>
+                </div>
+                <div class="cyber-card price-item">
+                    <h3>Kaspa (KAS)</h3>
+                    <div class="price-val">--</div>
+                    <div class="price-change">--</div>
+                </div>
+                <div class="cyber-card price-item">
+                    <h3>Monero (XMR)</h3>
+                    <div class="price-val">--</div>
+                    <div class="price-change">--</div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN DE NOTICIAS EN TARJETAS INTERACTIVAS -->
+            <div class="section-title">📰 LATEST NEWS // COINTELEGRAPH</div>
+            <div id="news-container" class="news-grid">
+                <div class="loading">📡 Fetching latest crypto news...</div>
+            </div>
+            <div class="chip" style="margin-top: 12px;">📌 Click any card to read full article on Cointelegraph</div>
+        </section>
+
+        <!-- COLUMNA DERECHA: CALCULADORA + HARDWARE -->
+        <aside>
+            <div class="section-title">PROFIT CALCULATOR</div>
+            <div class="cyber-card">
+                <div class="calc-compact">
+                    <input type="number" id="hashrate" placeholder="Hashrate (MH/s)" value="120">
+                    <select id="coinSelect">
+                        <option value="kaspa">Kaspa (KAS) - kHeavyHash</option>
+                        <option value="raven">Ravencoin (RVN) - KawPow</option>
+                        <option value="ethw">EthereumPoW (ETHW) - Ethash</option>
+                    </select>
+                    <input type="number" id="power" placeholder="Power (Watts)" value="150">
+                    <input type="number" id="kwh" placeholder="Electricity ($/kWh)" value="0.12" step="0.01">
+                    <button id="calcProfitBtn">⟳ UPDATE SIMULATION</button>
+                    <div id="profitResult" style="font-size: 0.8rem; margin-top: 12px; text-align: center; border-top: 1px solid #222; padding-top: 12px;">
+                        Est. Daily: <span style="color: var(--cyan); font-weight: bold;">$1.98</span>
+                    </div>
+                </div>
+                <div class="chip" style="margin-top: 12px;">⚡ Based on real market rates</div>
+            </div>
+
+            <!-- Mini info de hardware -->
+            <div style="margin-top: 20px;" class="section-title">TOP HARDWARE</div>
+            <div class="cyber-card">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <span>🖥️ RTX 5090</span>
+                    <span style="color: var(--cyan);">380 MH/s</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <span>⚡ Antminer S21 Pro</span>
+                    <span style="color: var(--cyan);">235 TH/s</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>🔷 IceRiver KS5M</span>
+                    <span style="color: var(--cyan);">15 TH/s (KAS)</span>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <footer style="margin-top: 40px; text-align: center; font-size: 0.6rem; color: var(--dim-text); letter-spacing: 1px;">
+        &copy; 2026 BLOCKMINE INFRASTRUCTURE // NO CENTRAL CONTROL // PRICES: COINGECKO // NEWS: COINTELEGRAPH RSS
+    </footer>
+
+    <script>
+        // ============================================
+        // 1. PRECIOS REALES - CoinGecko API (sin registro)
+        // 2. NOTICIAS EN TARJETAS - RSS2JSON + Cointelegraph
+        // 3. CALCULADORA DE RENTABILIDAD
+        // ============================================
+
+        const COINS = ['bitcoin', 'kaspa', 'monero'];
+        
+        const coinDisplay = {
+            bitcoin: { name: 'BTC', icon: '₿' },
+            kaspa: { name: 'KAS', icon: '🔷' },
+            monero: { name: 'XMR', icon: '🔒' }
+        };
+
+        // Elementos
+        const pricesGrid = document.getElementById('prices-grid');
+        const lastUpdateSpan = document.getElementById('last-update');
+
+        // Helper: formatear número
+        function formatNumber(num, decimals = 2) {
+            if (num === undefined || num === null) return '--';
+            return num.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+        }
+
+        // Helper: formatear cambio %
+        function formatChange(change) {
+            if (change === undefined || change === null) return '--';
+            const symbol = change >= 0 ? '▲' : '▼';
+            const color = change >= 0 ? '#00ff88' : '#ff3366';
+            return `<span style="color: ${color};">${symbol} ${Math.abs(change).toFixed(2)}%</span>`;
+        }
+
+        // 1. CoinGecko - precios reales
+        async function fetchPrices() {
+            try {
+                const url = `https://api.coingecko.com/api/v3/simple/price?ids=${COINS.join(',')}&vs_currencies=usd&include_24hr_change=true`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('CoinGecko error:', error);
+                return null;
+            }
+        }
+
+        // Render precios
+        async function renderPrices() {
+            const priceData = await fetchPrices();
+            
+            if (!priceData) {
+                pricesGrid.innerHTML = `<div class="cyber-card price-item" style="grid-column:1/-1"><h3>⚠️ API Error</h3><div class="price-val">CoinGecko limit</div><div class="price-change">30 calls/min</div></div>`;
+                return;
+            }
+
+            let html = '';
+            for (const coinId of COINS) {
+                const coin = coinDisplay[coinId];
+                const data = priceData[coinId];
+                if (data) {
+                    const price = data.usd;
+                    const change24h = data.usd_24h_change;
+                    html += `
+                        <div class="cyber-card price-item">
+                            <h3>${coin.icon} ${coin.name}</h3>
+                            <div class="price-val">$${formatNumber(price, price < 1 ? 6 : 2)}</div>
+                            <div class="price-change">24h: ${formatChange(change24h)}</div>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="cyber-card price-item">
+                            <h3>${coin.icon} ${coin.name}</h3>
+                            <div class="price-val">N/A</div>
+                            <div class="price-change">--</div>
+                        </div>
+                    `;
+                }
+            }
+            pricesGrid.innerHTML = html;
+            return priceData;
+        }
+
+        // Actualizar timestamp
+        function updateTimestamp() {
+            const now = new Date();
+            lastUpdateSpan.innerHTML = `synced: ${now.toLocaleTimeString()}`;
+        }
+
+        // ============================================
+        // 2. NOTICIAS EN TARJETAS (con imágenes simuladas)
+        // ============================================
+        
+        // Función para generar una imagen/icono representativo según el título
+        function getNewsIcon(title) {
+            const lowerTitle = title.toLowerCase();
+            if (lowerTitle.includes('bitcoin') || lowerTitle.includes('btc')) return '₿';
+            if (lowerTitle.includes('ethereum') || lowerTitle.includes('eth')) return '⟠';
+            if (lowerTitle.includes('kaspa') || lowerTitle.includes('kas')) return '🔷';
+            if (lowerTitle.includes('mining') || lowerTitle.includes('miner')) return '⛏️';
+            if (lowerTitle.includes('price') || lowerTitle.includes('market')) return '📈';
+            if (lowerTitle.includes('regulation') || lowerTitle.includes('sec')) return '⚖️';
+            if (lowerTitle.includes('hack') || lowerTitle.includes('security')) return '🔒';
+            if (lowerTitle.includes('nft')) return '🖼️';
+            if (lowerTitle.includes('defi')) return '🏦';
+            return '📰';
+        }
+
+        // Generar color de fondo para la imagen según el título
+        function getGradientForNews(title) {
+            const lowerTitle = title.toLowerCase();
+            if (lowerTitle.includes('bitcoin')) return 'linear-gradient(135deg, #f7931a20, #ff8c0020)';
+            if (lowerTitle.includes('ethereum')) return 'linear-gradient(135deg, #627eea20, #3c56b020)';
+            if (lowerTitle.includes('kaspa')) return 'linear-gradient(135deg, #00f3ff20, #0066ff20)';
+            if (lowerTitle.includes('mining')) return 'linear-gradient(135deg, #0ff20, #0fa020)';
+            return 'linear-gradient(135deg, #0a0f1a, #1a1f2e)';
+        }
+
+        async function fetchCryptoNews() {
+            const rssUrl = 'https://cointelegraph.com/rss';
+            const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+            
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+                
+                if (data.status === 'ok' && data.items && data.items.length > 0) {
+                    // Tomar las primeras 8 noticias para tener varias tarjetas
+                    return data.items.slice(0, 8).map(item => ({
+                        title: item.title,
+                        link: item.link,
+                        pubDate: item.pubDate,
+                        author: item.author || 'Cointelegraph'
+                    }));
+                }
+                return [];
+            } catch (error) {
+                console.error('News fetch error:', error);
+                return [];
+            }
+        }
+
+        // Helper para escapar HTML
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+
+        // Formatear tiempo relativo
+        function formatRelativeDate(dateStr) {
+            const pubDate = new Date(dateStr);
+            const now = new Date();
+            const diffMs = now - pubDate;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+            
+            if (diffMins < 1) return 'just now';
+            if (diffMins < 60) return `${diffMins} min ago`;
+            if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+            return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+        }
+
+        // Truncar título si es muy largo
+        function truncateTitle(title, maxLength = 80) {
+            if (title.length <= maxLength) return title;
+            return title.substring(0, maxLength) + '...';
+        }
+
+        // Renderizar noticias como tarjetas interactivas
+        async function renderNewsCards() {
+            const container = document.getElementById('news-container');
+            if (!container) return;
+            
+            container.innerHTML = '<div class="loading">📡 Fetching latest news from Cointelegraph...</div>';
+            
+            const news = await fetchCryptoNews();
+            
+            if (news.length === 0) {
+                container.innerHTML = '<div class="error">⚠️ Unable to load news. Try again later.</div>';
+                return;
+            }
+            
+            let html = '';
+            for (const item of news) {
+                const relativeTime = formatRelativeDate(item.pubDate);
+                const icon = getNewsIcon(item.title);
+                const gradient = getGradientForNews(item.title);
+                const truncatedTitle = truncateTitle(item.title, 90);
+                
+                html += `
+                    <div class="news-card" onclick="window.open('${escapeHtml(item.link)}', '_blank', 'noopener,noreferrer')">
+                        <div class="news-image" style="background: ${gradient}; display: flex; align-items: center; justify-content: center;">
+                            <span style="font-size: 3rem;">${icon}</span>
+                        </div>
+                        <div class="news-content">
+                            <div class="news-title">${escapeHtml(truncatedTitle)}</div>
+                            <div class="news-meta">
+                                <div class="news-source">
+                                    <span>📰</span> ${escapeHtml(item.author)}
+                                </div>
+                                <div class="news-time">🕒 ${relativeTime}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = html;
+        }
+
+        // ============================================
+        // 3. CALCULADORA DE RENTABILIDAD
+        // ============================================
+        function calculateProfit() {
+            const hashrate = parseFloat(document.getElementById('hashrate').value) || 0;
+            const power = parseFloat(document.getElementById('power').value) || 0;
+            const kwhCost = parseFloat(document.getElementById('kwh').value) || 0;
+            const coin = document.getElementById('coinSelect').value;
+            
+            let dailyRevenue = 0;
+            let coinName = "";
+            
+            // Tasas aproximadas por MH/s (basadas en mercado real)
+            if (coin === 'kaspa') {
+                dailyRevenue = hashrate * 0.0165;
+                coinName = "Kaspa (KAS)";
+            } else if (coin === 'raven') {
+                dailyRevenue = hashrate * 0.012;
+                coinName = "Ravencoin (RVN)";
+            } else if (coin === 'ethw') {
+                dailyRevenue = hashrate * 0.014;
+                coinName = "EthereumPoW (ETHW)";
+            }
+            
+            const dailyPowerCost = (power * 24 / 1000) * kwhCost;
+            const netProfit = dailyRevenue - dailyPowerCost;
+            const profitColor = netProfit >= 0 ? '#00ff88' : '#ff3366';
+            
+            document.getElementById('profitResult').innerHTML = `
+                <strong>${coinName}</strong><br>
+                ⛏️ Gross: $${dailyRevenue.toFixed(2)}/day<br>
+                ⚡ Power: $${dailyPowerCost.toFixed(2)}/day<br>
+                <span style="color: ${profitColor}; font-weight: bold;">NET: $${netProfit.toFixed(2)}/day</span>
+            `;
+        }
+
+        // ============================================
+        // ACTUALIZACIÓN PERIÓDICA
+        // ============================================
+        async function updateAll() {
+            await renderPrices();
+            updateTimestamp();
+        }
+
+        // Inicializar todo
+        updateAll();
+        renderNewsCards();
+        
+        // Actualizar precios cada 60 segundos (respetando límite de CoinGecko)
+        setInterval(updateAll, 60000);
+        
+        // Actualizar noticias cada 5 minutos
+        setInterval(renderNewsCards, 300000);
+        
+        // Event listener para calculadora
+        const calcBtn = document.getElementById('calcProfitBtn');
+        if (calcBtn) calcBtn.addEventListener('click', calculateProfit);
+        calculateProfit();
+    </script>
+</body>
+</html>
