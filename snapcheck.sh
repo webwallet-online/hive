@@ -26,6 +26,7 @@ fi
 
 echo "[*] Reiniciando servicio hive..."
 systemctl restart hive
+/hive/bin/miner stop
 
 SUM_PERSISTENT=$(sha256sum "$PERSISTENT_BACKUP" | awk '{print $1}')
 SUM_CURRENT=$(sha256sum "$AGENT_FILE" | awk '{print $1}')
